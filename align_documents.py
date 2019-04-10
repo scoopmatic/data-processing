@@ -129,18 +129,25 @@ def separate_statistics(stats_txt):
 
 
 def align(statistics, news):
-
     aligned_documents={}
-    aligned_doc_set = {}
     counter=0
     uncounter=0
     years=Counter()
 
     known_teams = set()
+    import copy
     for key, stat_documents in statistics.items():
         teams=[]
         for d in stat_documents: # iterate over all statistics from this one day or topic-id
+            init_key = copy.copy(key)
+            init_stamp = copy.copy(d['timestamp'][:8])
+            #import pdb; pdb.set_trace()
+            if key != d['timestamp'][:8]:
+                print("mismatch: %s (%s) != %s (%s)" % (key, init_key, d['timestamp'][:8], init_stamp))
+                sys.exit()
+
             game_stats=separate_statistics(d["text"])
+
             for gi, game in enumerate(game_stats): # iterate over games
                 curr_teams=extract_teams(game)
 
@@ -185,10 +192,12 @@ def align(statistics, news):
 
                 articles=[]
                 tries = 0
+
+                tmpkey = copy.copy(key)
                 while not articles:
-                    if key not in news:
+                    if tmpkey not in news:
                         break
-                    for article in news[key]: #try to find news articles labeled with this same key, skip statistics TODO: how to recognize news article from statistics?
+                    for article in news[tmpkey]: #try to find news articles labeled with this same key, skip statistics
                         if article['article-type'] == 'statistics':#is_statistics(article["text"]):
                             continue
                         # try to find team mentions
@@ -200,11 +209,11 @@ def align(statistics, news):
 
                     if not articles:
                         try:
-                            key = str(int(key)+1) # Lazy iteration of days, doesn't yield many more hits anyway
+                            tmpkey = "%s" % (int(tmpkey)+1) # Lazy iteration of days, doesn't yield many more hits anyway
                         except ValueError: # Is probably not a date
                             break
                         tries += 1
-                        if tries >= 2:
+                        if tries >= 2: # Expected publishing lag
                             break
 
                 #print()
@@ -216,19 +225,16 @@ def align(statistics, news):
                 #    print("Multiple matches:", len(articles), key, curr_teams)
 
                 i = 0
-                while True:
-                    new_key = "%s-%d-%d" % (key,gi,i)
-                    if new_key not in aligned_documents:
-                        break
-                    i += 1
+                #while True:
+                #    #new_key = "%s-%d-%d" % (tmpkey,gi,i)
+                #    new_key = "%s-%s-%s-%d" % (tmpkey, curr_teams[0], curr_teams[1], i)
+                new_key = "%s-%s-%s" % (tmpkey, curr_teams[0], curr_teams[1])
+                if new_key not in aligned_documents:
+                    aligned_documents[new_key]={"teams": curr_teams, "statistics": [], "news_articles": articles}
+                #i += 1
 
-                for art in articles:
-                    if art['file_name'] in aligned_doc_set:
-                        print("Duplicate:", art['file_name'], aligned_doc_set[art['file_name']], new_key)
-                    else:
-                        aligned_doc_set[art['file_name']] = new_key
-
-                aligned_documents[new_key]={"game_idx": gi, "teams": curr_teams, "statistics": game, "news_articles": articles}
+                #aligned_documents[new_key]={"game_idx": gi, "teams": curr_teams, "statistics": game, "game_hash":"%.6d" % (abs(hash(game)) % 10**6),  "stat_file": d["file_name"], "news_articles": articles}
+                aligned_documents[new_key]["statistics"].append({"game_idx": gi, "text": game, "game_hash":"%.6d" % (abs(hash(game)) % 10**6),  "file_name": d["file_name"]})
 
                 counter+=1
                 years.update([int(articles[0]["timestamp"][:4])])
@@ -302,6 +308,9 @@ def main(args):
     # find all statistics (ottelupöytäkirja) from news documents
     # returns a dictionary where key: topic-id or timestamp, value: list of statistics dictonaries
     statistics, plot_statistics = find_statistics(news_documents)
+    for key,docs in statistics.items():
+        for doc in docs:
+            assert key == doc['timestamp'][:8]
     #import pdb; pdb.set_trace()
     # align statistics and articles
     # returns a dictionary where key: topic-id or timestamp, value: list of aligned statistics and news articles (with article-type marked)
@@ -312,7 +321,7 @@ def main(args):
 
     # save
     with open("aligned_documents.json", "wt", encoding="utf-8") as f:
-        json.dump(aligned_documents, f, indent=2)
+        json.dump(aligned_documents, f, indent=2, sort_keys=True)
 
 
 
