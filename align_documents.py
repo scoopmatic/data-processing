@@ -139,13 +139,6 @@ def align(statistics, news):
     for key, stat_documents in statistics.items():
         teams=[]
         for d in stat_documents: # iterate over all statistics from this one day or topic-id
-            init_key = copy.copy(key)
-            init_stamp = copy.copy(d['timestamp'][:8])
-            #import pdb; pdb.set_trace()
-            if key != d['timestamp'][:8]:
-                print("mismatch: %s (%s) != %s (%s)" % (key, init_key, d['timestamp'][:8], init_stamp))
-                sys.exit()
-
             game_stats=separate_statistics(d["text"])
 
             for gi, game in enumerate(game_stats): # iterate over games
@@ -308,10 +301,7 @@ def main(args):
     # find all statistics (ottelupöytäkirja) from news documents
     # returns a dictionary where key: topic-id or timestamp, value: list of statistics dictonaries
     statistics, plot_statistics = find_statistics(news_documents)
-    for key,docs in statistics.items():
-        for doc in docs:
-            assert key == doc['timestamp'][:8]
-    #import pdb; pdb.set_trace()
+
     # align statistics and articles
     # returns a dictionary where key: topic-id or timestamp, value: list of aligned statistics and news articles (with article-type marked)
     aligned_documents, plot_alignments = align(statistics, news_documents)
