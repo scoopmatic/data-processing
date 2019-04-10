@@ -130,7 +130,6 @@ def separate_statistics(stats_txt):
 
 def align(statistics, news):
     aligned_documents={}
-    aligned_doc_set = {}
     counter=0
     uncounter=0
     years=Counter()
@@ -226,19 +225,16 @@ def align(statistics, news):
                 #    print("Multiple matches:", len(articles), key, curr_teams)
 
                 i = 0
-                while True:
-                    new_key = "%s-%d-%d" % (tmpkey,gi,i)
-                    if new_key not in aligned_documents:
-                        break
-                    i += 1
+                #while True:
+                #    #new_key = "%s-%d-%d" % (tmpkey,gi,i)
+                #    new_key = "%s-%s-%s-%d" % (tmpkey, curr_teams[0], curr_teams[1], i)
+                new_key = "%s-%s-%s" % (tmpkey, curr_teams[0], curr_teams[1])
+                if new_key not in aligned_documents:
+                    aligned_documents[new_key]={"teams": curr_teams, "statistics": [], "news_articles": articles}
+                #i += 1
 
-                for art in articles:
-                    if art['file_name'] in aligned_doc_set:
-                        print("Duplicate:", art['file_name'], aligned_doc_set[art['file_name']], new_key)
-                    else:
-                        aligned_doc_set[art['file_name']] = new_key
-
-                aligned_documents[new_key]={"game_idx": gi, "teams": curr_teams, "statistics": game, "stat_file": d["file_name"], "news_articles": articles}
+                #aligned_documents[new_key]={"game_idx": gi, "teams": curr_teams, "statistics": game, "game_hash":"%.6d" % (abs(hash(game)) % 10**6),  "stat_file": d["file_name"], "news_articles": articles}
+                aligned_documents[new_key]["statistics"].append({"game_idx": gi, "text": game, "game_hash":"%.6d" % (abs(hash(game)) % 10**6),  "file_name": d["file_name"]})
 
                 counter+=1
                 years.update([int(articles[0]["timestamp"][:4])])
