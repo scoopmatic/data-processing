@@ -5,7 +5,7 @@ Ahmat
 AIK
 Akatemia
 IC-Akatemia
-JyP|JyP HT
+JyP|JYP|JyP HT|JYP HT
 JYP-Akatemia|D Team
 D-Kiekko
 AK Bars Kazan
@@ -112,7 +112,7 @@ KEC Kölner Haie
 Kekava
 K-Espoo
 Ketterä
-Kiekko|Kiekko 67|Kiekko-67
+Kiekko-67|Kiekko 67
 Kirkkonummi Rangers
 KJT|KJT TuusKi
 K-Karhut
@@ -225,7 +225,7 @@ SaiPa
 Salamat
 Salo HT
 SaPKo
-SB|SB-90
+SB-90
 Sbandy Lahti
 SB Naantali
 SBPro|SB Pro|SB-Pro
@@ -281,7 +281,6 @@ Tuupovaara
 Tuusula
 UJK
 Vancouver Canucks
-Vantaa
 Veikot
 VFT|VFT Vantaa
 Viikingit
