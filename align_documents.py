@@ -332,7 +332,7 @@ if __name__=="__main__":
 
     argparser = argparse.ArgumentParser(description='')
 
-    argparser.add_argument('--json', type=str, default="all_news_stats.jsonl", help='json filename')
+    argparser.add_argument('--json', type=str, default="/home/jmnybl/stt-data-clean/all_news_stats.jsonl", help='json filename')
 
     args = argparser.parse_args()
 
