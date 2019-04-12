@@ -48,7 +48,7 @@ EC Kassel Huskies
 Edmonton|Edmonton Oilers
 EHC Kloten
 EPS
-Erä|EräIII|Erä III|Tapanilan Erä|Tapanilan Erä III
+EräIII|Erä III|Tapanilan Erä|Tapanilan Erä III
 Espoon Oilers
 Etelä-Korea
 Eurooppa
@@ -81,7 +81,7 @@ HC Olomouc
 HC Salamat
 HC Satakunta
 HC Slovan Bratislava
-Heki
+Heki|HeKi
 Hermes
 HIFK|HIFK A
 HK Sotshi
@@ -108,6 +108,7 @@ JyHC
 KalPa
 KaPa-65
 ((^|\u2013)Karhut)
+Karhut
 KEC Kölner Haie
 Kekava
 K-Espoo
@@ -127,7 +128,7 @@ KS Noux
 KSS
 K.S. Szarotka
 Kuortane
-K-Vantaa
+K-Vantaa|K–Vantaa
 Laaka
 Lada Togliatti
 Lahden NMKY
@@ -253,12 +254,13 @@ Sparta Praha
 Sport
 SPV
 SSV|SSV Suomi
+Storhamar HT
 Storveta IBK
 Sveiva
 SV Wiler-Ersigen
 Tampa Bay|Tampa Bay Lightning
 Tappara
-Tatran Stresovice
+Tatran Stresovice|Tatran Techtex Stresovice
 Team Århus Floorball
 Team Finland
 Thunder

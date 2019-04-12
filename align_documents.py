@@ -108,7 +108,7 @@ def separate_statistics(stats_txt):
 
     for line in stats_txt.split("\n"):
         line=line.strip()
-        if re.search(u'[A-Za-zÅÄÖåäö]\u2013[A-Za-zÅÄÖåäö]', line[:25]): # possible team occurrence
+        if re.search(u'[A-Za-zÅÄÖåäö]\u2013[A-Za-zÅÄÖåäö]', line[:25]): # possible team occurrence # TODO: what if team name includes numbers?
             for team, pat in known_teams:
                 if pat.search(line.split(u'\u2013')[0]):
                     # New stat starts
@@ -245,15 +245,17 @@ def align(statistics, news):
 def match_articles(news_text, team_query, threshold=7):
 
     for team in team_query:
-        team_regex=re.compile("(?=("+known_teams_src[team]+r"))", re.UNICODE)
+        team_regex=re.compile("(?=("+known_teams_src[team]+r"))", re.UNICODE) # TODO: should we include also stems?
         if not team_regex.search(news_text[:250]):
             return False
-    if score_regex.search(news_text):
-        return False
+#    if score_regex.search(news_text): 
+#        return False
     if len(teams_regex.findall(news_text)[:250]) > threshold:
         #print("Multiple matches:", news_text[:150])
         return False
-    if re.search("(rahapelit|tuloksia|taulukko|tilastoja|tilastot|järjestys|pörssi:?|pörssejä|siirrot|ohjelma|Taitoluistelua) ?[\n/]", news_text):
+    if re.search("([Pp]itkäveto)|([Tt]ulosveto)|([Vv]oittajaveto)|([Ll]iigatulokset)|([Jj]ääkiekkotulos)|([Pp]istepörssin kärki\:)|([Pp]istepörssi\:)|([Rr]ahapelit)|(SM-[Ll]iiga\:)|(SM-liigan tulokset\:)|(pistetilasto\:)|(SM-jääkiekko\:)|([Tt]ulosvedon)|([M|m]aalivahdit\:)|([Oo]tteluparit\:)", news_text):
+        return False
+    if re.search("(tuloksia)|(tulokset)|(taulukko)|(tilastoja)|(tilastot)|(järjestys)|(pörssi:?)|(pörssejä)|(siirrot)|(ohjelma)|(Taitoluistelua) ?[\n\/]", news_text):
         return False
     return True
 

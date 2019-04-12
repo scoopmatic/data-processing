@@ -26,6 +26,9 @@ abbreviations = ['yv2', 'av2', 'yv', 'av', 'tv', 'sr', 'tm', 'im', 'vl', 'rl', '
 
 
 endresult_regex = re.compile("\([0-9]+(\u2013|-|—)[0-9]+(,|\s)\s?[0-9]+(\u2013|-|—)[0-9]+(,|\s)\s?[0-9]+(\u2013|-|—)[0-9]+", re.UNICODE) # line should have at least (1–1, 1–1, 1–0
+
+complete_endresult_regex = re.compile("(\([0-9]+[–—-][0-9]+[,\s]\s?[0-9]+[–—-][0-9]+[,\s]\s?[0-9]+[–—-][0-9]+(?:[,\s]\s?[0-9]+[–—-][0-9]+)*\))", re.UNICODE) # take whole parenthesis
+
 score_regex = re.compile("(?=(ja|vl|rl|je)?\.?\s?([0-9]+(?:\u2013|-)[0-9]+))", re.IGNORECASE)
 
 period_regex = re.compile("([1-9]\. erä)|Jatkoaika|Jatkoerä|Vom-kilpailu|Vl-maali", re.IGNORECASE)
@@ -33,7 +36,8 @@ abbr_regex = re.compile("(?=("+'|'.join(abbreviations)+"))", re.IGNORECASE)
 player_regex = re.compile("[^\(\)0-9]+", re.UNICODE)
 
 goal_regex = re.compile("([0-9]+\.[0-9]+)\.?\s([^\(\)0-9]+)\s(\([^\(\)0-9]+\)\s)?([0-9]+(?:–|-)[0-9]+)(?:\s)?("+"|".join(abbreviations)+")?\.?\s?("+"|".join(abbreviations)+")?\.?\s?("+"|".join(abbreviations)+")?", re.IGNORECASE)
-vl_goal_regex = re.compile("Vl-maali\:?\s([^\(\)0-9]+)\s([0-9]+(?:–|-)[0-9]+)", re.IGNORECASE) # Vl-maali: Tapio Laakso 3–2.
+#vl_goal_regex = re.compile("(?=(?=Rl-kilpailu)|(?=Vl-maali))\:?\s([^\(\)0-9]+)\s([0-9]+(?:–|-)[0-9]+)", re.IGNORECASE) # Vl-maali: Tapio Laakso 3–2.
+vl_goal_regex = re.compile("Vl-maali\:?\s([^\(\)0-9]+)\s([0-9]+(?:–|-)[0-9]+)", re.IGNORECASE)
 
 penalty_regex = re.compile("([0-9]+\.[0-9]+)\.?\s([^\(\)0-9]+(?:\s[^\(\)0-9]+)?)\s(?:\([^\(\)]+\)\s)?([^\(\)0-9]{1,4})\s([0-9\+]+)\smin", re.IGNORECASE)
 save_regex = re.compile("[:,]\s((?:[^\(\)0-9]+\s)?[^\(\)0-9]+)\s([^\(\)0-9]+)\s(?:[0-9\+\(\)]+)=([0-9]+)", re.IGNORECASE)
@@ -45,17 +49,23 @@ def extract_endresult(line, teams_regex):
         return None, None, []
     teams = re.findall(teams_regex, line)
     if len(teams) != 2:
-        print("Something weird in this line:", line, teams, file=sys.stderr)
+        print("Something weird in this line with teams:", line, teams, file=sys.stderr)
         return None, None, []
     home, guest = teams
-    abbr, score = re.findall(score_regex, line)[0]
+    try:
+        abbr, score = re.findall(score_regex, line)[0]
+        periods = re.findall(complete_endresult_regex, line)[0]
+    except IndexError: # Lukko–HPK (1–5, 1–6, 2–4, 2–2 ja)
+        print("Something weird in this line with score:", line, re.findall(score_regex, line), file=sys.stderr)
+        return None, None, []
     if abbr == "":
         abbr = "noabbr"
     e = OrderedDict()
-    e["Type"] = "lopputulos"
+    e["Type"] = "Lopputulos"
     e["Home"] = home
     e["Guest"] = guest
     e["Score"] = score
+    e["Periods"] = periods
     e["Abbreviations"] = [abbr]
     e["Time"] = 0.0
     return home, guest, [e]
@@ -86,18 +96,18 @@ def goal_event(time, player, assist, score, abbr, abbr2, abbr3, team):
         assist_splitter = "-"
 
     e = OrderedDict()
-    e["Type"] = "maali"
+    e["Type"] = "Maali"
     e["Score"] = score
     e["Team"] = team
     e["Player"] = player
     e["Assist"] = assist.strip().replace("(", "").replace(")", "").split(assist_splitter)
     e["Abbreviations"] = abbrs
-    e["Time"] = float(time) 
+    e["Time"] = float(time)
     return e
 
 def extract_goals(line, current_score, home, guest):
 
-    if not period_regex.search(line):
+    if not home or not guest or not period_regex.search(line):
         return [], current_score
 
     goals=goal_regex.findall(line)
@@ -133,7 +143,7 @@ def full_team_name(team_abbr, home, guest):
 
 def extract_penalties(line, home, guest):
 
-    if not line.startswith("Jäähyt"):
+    if not home or not guest or not line.startswith("Jäähyt"):
         return []
 
     penalties=penalty_regex.findall(line)
@@ -145,18 +155,18 @@ def extract_penalties(line, home, guest):
         time, player, team_abbr, minutes = penalty # 7.25 Jyri Marttinen Ä 2 min
 
         e = OrderedDict()
-        e["Type"] = "jäähy"
+        e["Type"] = "Jäähy"
         e["Player"] = player
         e["Team"] = full_team_name(team_abbr, home, guest)
         e["Minutes"] = minutes
-        e["Time"] = float(time) 
+        e["Time"] = float(time)
         events.append(e)
     return events
 
 
 def extract_saves(line, home, guest):
 
-    if not "Torjunnat:" in line:
+    if not home or not guest or not "Torjunnat:" in line:
         return []
 
     saves=save_regex.findall(line)
@@ -168,7 +178,7 @@ def extract_saves(line, home, guest):
         player, team_abbr, total_saves = save # Jussi Rynnäs K 12+7+8=27
 
         e = OrderedDict()
-        e["Type"] = "torjunnat"
+        e["Type"] = "Torjunnat"
         e["Player"] = player
         e["Team"] = full_team_name(team_abbr, home, guest)
         e["Saves"] = total_saves
@@ -211,10 +221,12 @@ def eventize(stat, teams_regex):
 
 
 
-def print_events(idx, events, news_article, stat, output_file):
+def print_events(idx, statistics_idx, news_article_idx, events, news_article, stat, output_file):
 
     print("##BEGINNING-OF-GAME##", file=output_file)
     print("# IDX =", idx, file=output_file)
+    print("# NEWS IDX =", news_article_idx, file=output_file)
+    print("# STATICTICS IDX =", statistics_idx, file=output_file)
     for line in news_article.split("\n"):
         print(line, file=output_file)
     print("="*50, file=output_file)
@@ -232,14 +244,32 @@ def print_events(idx, events, news_article, stat, output_file):
         if e["Type"] == "lopputulos" or e["Type"] == "torjunnat":
             e.pop("Time")
 
-        # print the event
-        print("E"+str(i+1), ", ".join(k+": "+str(v) for k,v in e.items()), file=output_file)
+        # add event idx
+        e.update({"event_idx": "E"+str(i+1)})
+        e.move_to_end("event_idx", last=False)
 
-    #print(stat, file=output_file)
+        # print the event
+        if e["Type"]=="Lopputulos":
+            print("{idx} Lopputulos {home}\u2013{guest} {score} {abbr} {periods} ".format(idx=e["event_idx"], home=e["Home"], guest=e["Guest"], score=e["Score"], abbr=e["Abbreviations"] if e["Abbreviations"]!="noabbr" else "", periods=e["Periods"]), file=output_file)
+
+        elif e["Type"]=="Maali":
+            print("{idx} Maali {score} {abbr} {player}, {team} ({assist}) {time:.2f} ".format(idx=e["event_idx"], score=e["Score"], abbr=e["Abbreviations"] if e["Abbreviations"]!="noabbr" else "", player=e["Player"], team=e["Team"], assist=e["Assist"], time=e["Time"]), file=output_file)
+
+        elif e["Type"]=="Jäähy":
+            print("{idx} Jäähy {player}, {team} {minutes}min {time:.2f}".format(idx=e["event_idx"], player=e["Player"], team=e["Team"], minutes=e["Minutes"], time=e["Time"]), file=output_file)
+
+        elif e["Type"]=="Torjunnat":
+            print("{idx} Torjunnat {player}, {team} {saves} torjuntaa".format(idx=e["event_idx"], player=e["Player"], team=e["Team"], saves=e["Saves"]), file=output_file)
+        else:
+            print(event)
+            assert False
+
+    print(stat, file=output_file)
 
     print("##END-OF-GAME##", file=output_file)
     print(file=output_file)
     print(file=output_file)
+    return events
 
 
 
@@ -290,10 +320,13 @@ def main(args):
         known_teams += line.split("|")
     teams_regex = re.compile("(?=("+'|'.join(known_teams)+r"))") # do not use ignore case here...
 
+
+    all_events=OrderedDict()
+
     # iterate over alignments
     for game_idx in data.keys():
-        statistics_text = data[game_idx]["statistics"][0]["text"] # TODO: take all, not just the first one?
-        news_article_text = data[game_idx]["news_articles"][0]["text"] # TODO: take all, not just the first one?
+        statistics_text, statistics_idx = data[game_idx]["statistics"][0]["text"], data[game_idx]["statistics"][0]["file_name"] # TODO: take all, not just the first one?
+        news_article_text, news_article_idx = data[game_idx]["news_articles"][0]["text"], data[game_idx]["news_articles"][0]["file_name"] # TODO: take all, not just the first one?
         if not is_statistics(statistics_text, teams_regex):
             statistics_text = statistics_text.replace("\n", " ", 1) # this is trying to fix line break errors
             if not is_statistics(statistics_text, teams_regex):
@@ -302,7 +335,11 @@ def main(args):
         events = eventize(statistics_text, teams_regex)
         if not events:
             continue
-        print_events(game_idx, events, news_article_text, statistics_text, output_file)
+
+        # print to a text file
+        events = print_events(game_idx, statistics_idx, news_article_idx, events, news_article_text, statistics_text, output_file)
+
+        all_events[game_idx]={"statistics": statistics_idx, "news_articles": news_article_idx, "events": events}
 
         # collect statistics, count number of games and how many times each team appeared in the data
         total_games += 1
@@ -311,6 +348,8 @@ def main(args):
     print("Initial number of alignments:", len(data.keys()), file=sys.stderr)
     print("Total number of eventized games:", total_games, file=sys.stderr)
     print("Teams:", team_counter.most_common(1000000), file=sys.stderr)
+    with open("hockey-events.json", "wt", encoding="utf-8") as f:
+        json.dump(all_events, f, indent=2)
 
 
 if __name__=="__main__":
