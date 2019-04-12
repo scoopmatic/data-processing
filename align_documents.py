@@ -70,8 +70,9 @@ def extract_teams(txt):
     for line in txt.split("\n"):
         line=line.strip()
         for team, pat in known_teams:
-            if pat.search(line):
-                teams.append(team)
+            match = pat.search(line)
+            if match:
+                teams.append((match.start(), team))
             if len(teams) >= 2:
                 break
         if len(teams) >= 2:
@@ -97,7 +98,7 @@ def extract_teams(txt):
             teams = teams.replace('\u2013vuot','-vuot')
             teams = teams.split('\u2013')"""
 
-    return teams
+    return [x for _,x in sorted(teams)]
 
 
 def separate_statistics(stats_txt):
