@@ -31,13 +31,13 @@ complete_endresult_regex = re.compile("(\([0-9]+[–—-][0-9]+[,\s]\s?[0-9]+[�
 
 score_regex = re.compile("(?=(ja|vl|rl|je)?\.?\s?([0-9]+(?:\u2013|-)[0-9]+))", re.IGNORECASE)
 
-period_regex = re.compile("([1-9]\. erä)|Jatkoaika|Jatkoerä|Vom-kilpailu|Vl-maali", re.IGNORECASE)
+period_regex = re.compile("([1-9]\. erä)|Jatkoaika|Jatkoerä|Vom-kilpailu|Vl-maali|Rl-kilpailu|Rl-kisa", re.IGNORECASE)
 abbr_regex = re.compile("(?=("+'|'.join(abbreviations)+"))", re.IGNORECASE)
 player_regex = re.compile("[^\(\)0-9]+", re.UNICODE)
 
 goal_regex = re.compile("([0-9]+\.[0-9]+)\.?\s([^\(\)0-9]+)\s(\([^\(\)0-9]+\)\s)?([0-9]+(?:–|-)[0-9]+)(?:\s)?("+"|".join(abbreviations)+")?\.?\s?("+"|".join(abbreviations)+")?\.?\s?("+"|".join(abbreviations)+")?", re.IGNORECASE)
 #vl_goal_regex = re.compile("(?=(?=Rl-kilpailu)|(?=Vl-maali))\:?\s([^\(\)0-9]+)\s([0-9]+(?:–|-)[0-9]+)", re.IGNORECASE) # Vl-maali: Tapio Laakso 3–2.
-vl_goal_regex = re.compile("Vl-maali\:?\s([^\(\)0-9]+)\s([0-9]+(?:–|-)[0-9]+)", re.IGNORECASE)
+vl_goal_regex = re.compile("(?:(?:Rl-kilpailu)|(?:Vl-maali))\:?\s([^\(\)0-9]+)\s([0-9]+(?:–|-)[0-9]+)", re.IGNORECASE)
 
 penalty_regex = re.compile("([0-9]+\.[0-9]+)\.?\s([^\(\)0-9]+(?:\s[^\(\)0-9]+)?)\s(?:\([^\(\)]+\)\s)?([^\(\)0-9]{1,4})\s([0-9\+]+)\smin", re.IGNORECASE)
 save_regex = re.compile("[:,]\s((?:[^\(\)0-9]+\s)?[^\(\)0-9]+)\s([^\(\)0-9]+)\s(?:[0-9\+\(\)]+)=([0-9]+)", re.IGNORECASE)
@@ -74,6 +74,7 @@ def extract_endresult(line, teams_regex):
 
 def infer_team(score, current, home, guest):
     """ Count which team did the goal (home or guest), return a team and current score """
+
     h, g = re.split("[\u2013–-]", score, maxsplit=1)
     if int(h) > current[0]:
         team = home
@@ -117,7 +118,11 @@ def extract_goals(line, current_score, home, guest):
             team, current_score = infer_team(score, current_score, home, guest)
             if not team:
                 current_score, []
-            e = goal_event("65.00", player, "", score, "vl", None, None, team)
+            if line.startswith("Rl") or line.startswith("rl"):
+                abbr="rl"
+            else:
+                abbr="vl"
+            e = goal_event("65.00", player, "", score, abbr, None, None, team)
             return [e], current_score
         return [], current_score # no goals
 
@@ -250,21 +255,21 @@ def print_events(idx, statistics_idx, news_article_idx, events, news_article, st
 
         # print the event
         if e["Type"]=="Lopputulos":
-            print("{idx} Lopputulos {home}\u2013{guest} {score} {abbr} {periods} ".format(idx=e["event_idx"], home=e["Home"], guest=e["Guest"], score=e["Score"], abbr=e["Abbreviations"] if e["Abbreviations"]!="noabbr" else "", periods=e["Periods"]), file=output_file)
+            print("{idx} Lopputulos {home}\u2013{guest} {score} {abbr} {periods}\t|||".format(idx=e["event_idx"], home=e["Home"], guest=e["Guest"], score=e["Score"], abbr=e["Abbreviations"] if e["Abbreviations"]!="noabbr" else "", periods=e["Periods"]), file=output_file)
 
         elif e["Type"]=="Maali":
-            print("{idx} Maali {score} {abbr} {player}, {team} ({assist}) {time:.2f} ".format(idx=e["event_idx"], score=e["Score"], abbr=e["Abbreviations"] if e["Abbreviations"]!="noabbr" else "", player=e["Player"], team=e["Team"], assist=e["Assist"], time=e["Time"]), file=output_file)
+            print("{idx} Maali {score} {abbr} {player}, {team} ({assist}) {time:.2f}\t|||".format(idx=e["event_idx"], score=e["Score"], abbr=e["Abbreviations"] if e["Abbreviations"]!="noabbr" else "", player=e["Player"], team=e["Team"], assist=e["Assist"], time=e["Time"]), file=output_file)
 
         elif e["Type"]=="Jäähy":
-            print("{idx} Jäähy {player}, {team} {minutes}min {time:.2f}".format(idx=e["event_idx"], player=e["Player"], team=e["Team"], minutes=e["Minutes"], time=e["Time"]), file=output_file)
+            print("{idx} Jäähy {player}, {team} {minutes}min {time:.2f}\t|||".format(idx=e["event_idx"], player=e["Player"], team=e["Team"], minutes=e["Minutes"], time=e["Time"]), file=output_file)
 
         elif e["Type"]=="Torjunnat":
-            print("{idx} Torjunnat {player}, {team} {saves} torjuntaa".format(idx=e["event_idx"], player=e["Player"], team=e["Team"], saves=e["Saves"]), file=output_file)
+            print("{idx} Torjunnat {player}, {team} {saves} torjuntaa\t|||".format(idx=e["event_idx"], player=e["Player"], team=e["Team"], saves=e["Saves"]), file=output_file)
         else:
             print(event)
             assert False
 
-    print(stat, file=output_file)
+#    print(stat, file=output_file)
 
     print("##END-OF-GAME##", file=output_file)
     print(file=output_file)
