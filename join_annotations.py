@@ -35,4 +35,4 @@ for line in anno_f:
         if event_text:
             event_texts[event_id] = event_text
 
-print(json.dumps(meta))
+print(json.dumps(meta, indent=2, sort_keys=False))
