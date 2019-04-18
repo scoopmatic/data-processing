@@ -57,12 +57,12 @@ def generate_input(event, context):
         out.append(('saves', event['Saves']))
         out.append(('time', event['Time']))
     else:
-        pass
-    """for key in event: # Add any information that might have been left out
-        if key in ['event_idx']: # Ignore list
-            continue
-        if key not in dict(out):
-            out.append((key, event[key]))"""
+        # Unrecognized event type, print everything
+        for key in event: # Add any information that might have been left out
+            if key in ['event_idx']: # Ignore list
+                continue
+            if key not in dict(out):
+                out.append((key, event[key]))
 
     return ' '.join(['<%s>%s</%s>' % (k,v,k) for k,v in out])
 
