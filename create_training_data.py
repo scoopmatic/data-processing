@@ -1,5 +1,7 @@
 import json
 import sys
+import collections
+import re
 
 def generate_input(event):
     out = []
@@ -51,9 +53,27 @@ if len(sys.argv) < 2:
 
 meta = json.load(open(sys.argv[1]))
 
+event_pat = re.compile("^E\d+$")
+
 for key in meta:
+    entries = collections.defaultdict(lambda: [])
     for event in meta[key]['events']:
         if 'text' in event:
-            print(key)
-            print('IN:', generate_input(event))
-            print('OUT:', event['text'])
+            #print(event)
+            if event_pat.search(event['text']):
+                entries[event['text']].append(event)
+            else:
+                entries[event['event_idx']].append(event)
+
+    if entries:
+        print()
+        print("GAME:", key)
+    for idx, events in entries.items():
+        text = None
+        for event in events:
+            print('   IN:', generate_input(event))
+            if not event_pat.search(event['text']):
+                text = event['text']
+
+        print('   OUT:', text)
+        print()
