@@ -35,4 +35,13 @@ for line in anno_f:
         if event_text:
             event_texts[event_id] = event_text
 
+
+# Standardize score format
+for key in meta:
+    for ev_i, ev in enumerate(meta[key]['events']):
+        for ev_key, ev_val in ev.items():
+            if ev_key == 'Score':
+                meta[key]['events'][ev_i][ev_key] = ev_val.replace('-','\u2013')
+
+
 print(json.dumps(meta, indent=2, sort_keys=False))
