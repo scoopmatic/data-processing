@@ -71,7 +71,7 @@ def generate_input(event, context, xml_style=True):
                 out.append((key, event[key]))
 
     if xml_style:
-        return ' '.join(['<%s>%s</%s>' % (k,v,k) for k,v in out])
+        return ' '.join([('<%s>%s</%s>' % (k,v,k)).replace('\u2013', ' \u2013 ') for k,v in out])
     else:
         return ', '.join(['%s=\'%s\'' % (k,v) for k,v in out])
 
@@ -129,7 +129,7 @@ for key in meta:
     for idx, events in entries.items():
         text = None
         for event in events:
-            print('   IN:', generate_input(event, context, xml_style=False))
+            print('   IN:', generate_input(event, context, xml_style=True))
             if not event_ref_pat.search(event['text']):
                 text = event['text']
 
