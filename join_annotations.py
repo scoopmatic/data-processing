@@ -10,7 +10,7 @@ meta = json.load(open(sys.argv[1]))
 anno_f = open(sys.argv[2])
 
 event_pat = re.compile("^(E\d+) ")
-for line in anno_f:
+for i, line in enumerate(anno_f):
     if line.startswith("##BEGINNING-OF-GAME##"):
         key, news_idx, stat_idx = None, None, None
         event_texts = {}
@@ -31,17 +31,12 @@ for line in anno_f:
     match = event_pat.search(line)
     if match:
         event_id = match.groups(0)[0]
-        event_text = line.split('|||')[1].strip()
+        try:
+            event_text = line.split('|||')[1].strip()
+        except IndexError:
+            print("Parse error on line %d in %s: %s" % (i, sys.argv[2], line), file=sys.stderr)
+            raise
         if event_text:
             event_texts[event_id] = event_text
-
-
-# Standardize score format
-for key in meta:
-    for ev_i, ev in enumerate(meta[key]['events']):
-        for ev_key, ev_val in ev.items():
-            if ev_key == 'Score':
-                meta[key]['events'][ev_i][ev_key] = ev_val.replace('-','\u2013')
-
 
 print(json.dumps(meta, indent=2, sort_keys=False))
