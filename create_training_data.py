@@ -2,6 +2,7 @@ import json
 import sys
 import collections
 import re
+import random
 
 
 def timediff(prior, latter):
@@ -22,20 +23,28 @@ def timediff(prior, latter):
 def generate_input(event, context, xml_style=True):
     out = []
     # Define selection and order of information for training input
+    print(event)
     if event['Type'] == 'Lopputulos':
         out.append(('type', 'result'))
         out.append(('home', event['Home']))
         out.append(('guest', event['Guest']))
         out.append(('score', event['Score']))
         out.append(('periods', event['Periods']))
+        if 'Abbreviations' in event and event['Abbreviations'] != 'noabbr':
+            out.append(('abbrevs', event['Abbreviations']))
         #out.append(('time', event['Time']))
-        context['final_score'] = event['Score']
     elif event['Type'] == 'Maali':
         out.append(('type', 'goal'))
-        out.append(('score', event['Score']))
         out.append(('team', event['Team']))
         out.append(('player', event['Player']))
         out.append(('assist', event['Assist']))
+        if 'home_team' in context and context['home_team'] == event['Team']:
+            out.append(('team_score', event['Score'].split('\u2013')[0]))
+        elif 'guest_team' in context and context['guest_team'] == event['Team']:
+            out.append(('team_score', event['Score'].split('\u2013')[1]))
+        else:
+            out.append(('team_score', '?'))
+        out.append(('score', event['Score']))
         out.append(('time', event['Time']))
         if 'time_diff' in event:
             #out.append(('timediff', timediff(context['last_goal_time'], event['Time'])))
@@ -48,7 +57,8 @@ def generate_input(event, context, xml_style=True):
             goal_types.append('deciding')
         if goal_types:
             out.append(('goaltype', ', '.join(goal_types)))
-        out.append(('abbrevs', event['Abbreviations']))
+        if 'Abbreviations' in event and event['Abbreviations'] != 'noabbr':
+            out.append(('abbrevs', event['Abbreviations']))
         #context['last_goal_time'] = event['Time']
     elif event['Type'] == 'J\u00e4\u00e4hy':
         out.append(('type', 'penalty'))
@@ -61,7 +71,7 @@ def generate_input(event, context, xml_style=True):
         out.append(('team', event['Team']))
         out.append(('player', event['Player']))
         out.append(('saves', event['Saves']))
-        out.append(('time', event['Time']))
+        #out.append(('time', event['Time']))
     else:
         # Unrecognized event type, print everything
         for key in event: # Add any information that might have been left out
@@ -70,10 +80,16 @@ def generate_input(event, context, xml_style=True):
             if key not in dict(out):
                 out.append((key, event[key]))
 
+    #out.append(('typestr', event['Type']))
     if xml_style:
-        return ' '.join([('<%s>%s</%s>' % (k,v,k)).replace('\u2013', ' \u2013 ') for k,v in out])
+        string = ' '.join([('<%s> %s </%s>' % (k,v,k)) for k,v in out])
     else:
-        return ', '.join(['%s=\'%s\'' % (k,v) for k,v in out])
+        #string = ' ; '.join(['%s = \' %s \'' % (k,v) for k,v in out])
+        string = ' ; '.join(['%s = %s' % (k,v) for k,v in out])
+        #return ' '.join([('%s' % (v)).replace('\u2013', ' \u2013 ') for k,v in out])
+
+    string = string.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')
+    return re.sub(" +", " ", string)
 
 
 if len(sys.argv) < 2:
@@ -84,6 +100,14 @@ meta = json.load(open(sys.argv[1]))
 
 event_ref_pat = re.compile("^E\d+$")
 
+input_file = open("train_input.txt", 'w')
+output_file = open("train_output.txt", 'w')
+
+input_val_file = open("val_input.txt", 'w')
+output_val_file = open("val_output.txt", 'w')
+
+
+val_size = 400
 for key in meta:
     # Calculate time diff between goals
     last_goal_time = None
@@ -95,7 +119,12 @@ for key in meta:
 
     # Collect events with mentions
     entries = collections.defaultdict(lambda: [])
+    context = {}
     for event in meta[key]['events']:
+        if event['Type'] == 'Lopputulos':
+            context['final_score'] = event['Score']
+            context['home_team'] = event['Home']
+            context['guest_team'] = event['Guest']
         if 'text' in event:
             #print(event)
             if event_ref_pat.search(event['text']): # Is event reference?
@@ -108,14 +137,20 @@ for key in meta:
 
     print()
     print("GAME:", key)
-    context = {}
 
     # Identify deciding goal
     last_score = None
     loosing_score = None
     for event in meta[key]['events'][::-1]:
         if event['Type'] == 'Maali':
-            s1, s2 = event['Score'].split('\u2013')
+            try:
+                s1, s2 = event['Score'].split('\u2013')
+            except ValueError:
+                try:
+                    s1, s2 = event['Score'].split('-')
+                except ValueError:
+                    print("Parse error in %s: %s" % (key, event['Score']), file=sys.stderr)
+                    raise
             s1, s2 = int(s1), int(s2)
             if last_score is None:
                 loosing_score = min(s1, s2)
@@ -128,10 +163,38 @@ for key in meta:
     # Print results
     for idx, events in entries.items():
         text = None
+        inputs = []
         for event in events:
-            print('   IN:', generate_input(event, context, xml_style=True))
+            input = generate_input(event, context, xml_style=False)
+            print('   IN:', input)
+            inputs.append(input)
             if not event_ref_pat.search(event['text']):
                 text = event['text']
+            if not text:
+                continue
 
         print('   OUT:', text)
         print()
+        char_level = False
+        if char_level:
+            delim = ' '
+        else:
+            delim = ''
+        if len(inputs)==1 and text:# and event['Type'] in ['Maali']:
+            input = inputs[0]+'\n'
+            #output = event['Type']+': '+text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')+'\n'
+            output = text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')
+            output = "<%s> %s </%s>\n" % (event['Type'], output, event['Type'])
+            if val_size > 0 and random.random() < 0.1:
+                input_val_file.write(delim.join(input))
+                output_val_file.write(delim.join(output))
+                val_size -= 1
+            else:
+                input_file.write(delim.join(input))
+                output_file.write(delim.join(output))
+
+
+input_file.close()
+output_file.close()
+input_val_file.close()
+output_val_file.close()
