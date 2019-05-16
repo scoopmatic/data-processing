@@ -41,7 +41,10 @@ def generate_input(event, context, xml_style=True):
         if 'home_team' in context and context['home_team'] == event['Team']:
             out.append(('team_score', event['Score'].split('\u2013')[0]))
         elif 'guest_team' in context and context['guest_team'] == event['Team']:
-            out.append(('team_score', event['Score'].split('\u2013')[1]))
+            try:
+                out.append(('team_score', event['Score'].split('\u2013')[1]))
+            except IndexError:
+                out.append(('team_score', event['Score'].split('-')[1]))
         else:
             out.append(('team_score', '?'))
         out.append(('score', event['Score']))
@@ -106,6 +109,7 @@ output_file = open("train_output.txt", 'w')
 input_val_file = open("val_input.txt", 'w')
 output_val_file = open("val_output.txt", 'w')
 
+selection_file = open("selection.txt", 'w')
 
 val_size = 400
 for key in meta:
@@ -125,12 +129,18 @@ for key in meta:
             context['final_score'] = event['Score']
             context['home_team'] = event['Home']
             context['guest_team'] = event['Guest']
+
+        event['game'] = key
         if 'text' in event:
             #print(event)
+            event['reported'] = 1
             if event_ref_pat.search(event['text']): # Is event reference?
                 entries[event['text']].append(event)
             else:
                 entries[event['event_idx']].append(event)
+        else:
+            event['reported'] = 0
+            entries[event['event_idx']].append(event)
 
     if not entries:
         continue
@@ -161,11 +171,21 @@ for key in meta:
             last_score = event['Score']
 
     # Print results
+    empty_game = True
+    for events in entries.values():
+        for event in events:
+            if event['reported'] == 1:
+                empty_game = False
     for idx, events in entries.items():
         text = None
         inputs = []
         for event in events:
             input = generate_input(event, context, xml_style=False)
+            event['input'] = input
+            if not empty_game:
+                selection_file.write(json.dumps(event)+'\n')
+            if event['reported'] == 0:
+                continue
             print('   IN:', input)
             inputs.append(input)
             if not event_ref_pat.search(event['text']):
@@ -173,28 +193,34 @@ for key in meta:
             if not text:
                 continue
 
-        print('   OUT:', text)
-        print()
         char_level = False
         if char_level:
             delim = ' '
         else:
             delim = ''
-        if len(inputs)==1 and text:# and event['Type'] in ['Maali']:
-            input = inputs[0]+'\n'
-            #output = event['Type']+': '+text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')+'\n'
-            output = text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')
-            output = "<%s> %s </%s>\n" % (event['Type'], output, event['Type'])
-            if val_size > 0 and random.random() < 0.1:
-                input_val_file.write(delim.join(input))
-                output_val_file.write(delim.join(output))
-                val_size -= 1
+
+        if text:
+            print('   OUT:', text)
+            print()
+            if len(inputs)==1:# len(inputs)==1 #and event['Type'] in ['Maali']:
+                input = inputs[0]+'\n'
+                #input = 'events = %d | ' % len(inputs) + '|'.join(inputs)+'\n'
+                #output = event['Type']+': '+text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')+'\n'
+                output = text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')
+                output = "<%s> %s </%s>\n" % (event['Type'], output, event['Type'])
+                if val_size > 0 and random.random() < 0.1:
+                    input_val_file.write(delim.join(input))
+                    output_val_file.write(delim.join(output))
+                    val_size -= 1
+                else:
+                    input_file.write(delim.join(input))
+                    output_file.write(delim.join(output))
             else:
-                input_file.write(delim.join(input))
-                output_file.write(delim.join(output))
+                pass
 
 
 input_file.close()
 output_file.close()
 input_val_file.close()
 output_val_file.close()
+selection_file.close()
