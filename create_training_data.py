@@ -23,7 +23,9 @@ def timediff(prior, latter):
 def generate_input(event, context, xml_style=True):
     out = []
     # Define selection and order of information for training input
-    print(event)
+    #print(event)
+    if 'Score' in event:
+        event['Score'] = event['Score'].replace('-','\u2013')
     if event['Type'] == 'Lopputulos':
         out.append(('type', 'result'))
         out.append(('home', event['Home']))
@@ -109,10 +111,11 @@ output_file = open("train_output.txt", 'w')
 input_val_file = open("val_input.txt", 'w')
 output_val_file = open("val_output.txt", 'w')
 
-selection_file = open("selection.txt", 'w')
+selection_file = open("selection_train.jsonl", 'w')
+selection_val_file = open("selection_val.jsonl", 'w')
 
-val_size = 400
-for key in meta:
+val_size = 250
+for game_i, key in enumerate(meta):
     # Calculate time diff between goals
     last_goal_time = None
     for event in meta[key]['events']:
@@ -183,7 +186,10 @@ for key in meta:
             input = generate_input(event, context, xml_style=False)
             event['input'] = input
             if not empty_game:
-                selection_file.write(json.dumps(event)+'\n')
+                if val_size < 0:
+                    selection_file.write(json.dumps(event)+'\n')
+                else:
+                    selection_val_file.write(json.dumps(event)+'\n')
             if event['reported'] == 0:
                 continue
             print('   IN:', input)
@@ -208,15 +214,17 @@ for key in meta:
                 #output = event['Type']+': '+text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')+'\n'
                 output = text.replace('\u2013', ' \u2013 ').replace('(', ' ( ').replace(')', ' ) ').replace('.', ' . ').replace(',', ' , ')
                 output = "<%s> %s </%s>\n" % (event['Type'], output, event['Type'])
-                if val_size > 0 and random.random() < 0.1:
+
+                if val_size > 0:# and random.random() < 0.1:
                     input_val_file.write(delim.join(input))
                     output_val_file.write(delim.join(output))
-                    val_size -= 1
                 else:
                     input_file.write(delim.join(input))
                     output_file.write(delim.join(output))
             else:
                 pass
+
+    val_size -= 1
 
 
 input_file.close()
@@ -224,3 +232,4 @@ output_file.close()
 input_val_file.close()
 output_val_file.close()
 selection_file.close()
+selection_val_file.close()
