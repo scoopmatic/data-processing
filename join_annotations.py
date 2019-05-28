@@ -77,7 +77,7 @@ for i, line in enumerate(anno_f):
 
 
 
-json.dump(meta, open(sys.argv[3], 'w'), indent=2, sort_keys=False)
+json.dump(meta, open(sys.argv[3], 'w'), indent=2, ensure_ascii=False, sort_keys=False)
 print("Found %d (%d) games, %d events" % (cnt_game_begs, cnt_game_ends, cnt_events))
 print("Text in %d games, %d events. Not in %d events (%d+%d=%d~%d)" % (cnt_games_with_text, cnt_events_with_text, cnt_events_without_text, cnt_events_without_text, cnt_events_with_text, cnt_events_without_text+cnt_events_with_text, cnt_events))
 for evtype in cnt_event_types:
