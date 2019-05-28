@@ -39,6 +39,9 @@ for i, line in enumerate(anno_f):
         cnt_game_ends += 1
         game_has_text = False
 
+        if key not in meta: # Game is not in JSON, skip
+            continue
+
         for ei, event in enumerate(meta[key]['events']):
             if event['event_idx'] in event_texts:
                 cnt_event_types[event['Type']] += 1
